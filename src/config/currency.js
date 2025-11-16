@@ -1,32 +1,16 @@
-const ENV_CURRENCY = process.env.REACT_APP_CURRENCY;
+export const SUPPORTED_CURRENCIES = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'KES', symbol: 'Ksh', name: 'Kenyan Shilling' },
+];
 
-export const SUPPORTED_CURRENCIES = ['NGN', 'GHS', 'USD', 'ZAR'];
-
-export const APP_CURRENCY = SUPPORTED_CURRENCIES.includes(ENV_CURRENCY || '')
-  ? ENV_CURRENCY
-  : 'ZAR';
-
-const CURRENCY_LOCALE = {
-  NGN: 'en-NG',
-  GHS: 'en-GH',
-  USD: 'en-US',
-  ZAR: 'en-ZA',
-};
+// Use KES as default or fallback to USD
+export const APP_CURRENCY = SUPPORTED_CURRENCIES.find(currency => currency.code === 'KES') || SUPPORTED_CURRENCIES[0];
 
 export const formatCurrency = (amount) => {
-  const locale = CURRENCY_LOCALE[APP_CURRENCY] || 'en-ZA';
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: APP_CURRENCY,
-      currencyDisplay: 'symbol',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch (_e) {
-    // Fallback if Intl doesn't support currency
-    return `${APP_CURRENCY} ${amount.toFixed(2)}`;
+  if (typeof amount !== 'number') {
+    amount = parseFloat(amount) || 0;
   }
+  return `${APP_CURRENCY.symbol}${amount.toFixed(2)}`;
 };
-
-

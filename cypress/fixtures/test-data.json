@@ -1,0 +1,20 @@
+{
+  "books": [
+    {
+      "id": 1,
+      "title": "JavaScript for Beginners",
+      "price": 29.99,
+      "category": "Programming"
+    },
+    {
+      "id": 2, 
+      "title": "React Masterclass",
+      "price": 39.99,
+      "category": "Programming"
+    }
+  ],
+  "user": {
+    "email": "test@example.com",
+    "password": "password123"
+  }
+}

@@ -1,0 +1,115 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import Catalog from '../pages/Catalog';
+import Cart from '../components/Cart';
+
+// Mock StoreContext properly
+jest.mock('../store/StoreProvider', () => ({
+  StoreContext: React.createContext()
+}));
+
+// Mock useContext
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  useContext: jest.fn()
+}));
+
+const { useContext } = require('react');
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+  Link: ({ children, to, ...props }) => (
+    <a href={to} {...props}>{children}</a>
+  )
+}));
+
+// Mock currency
+jest.mock('../config/currency', () => ({
+  formatCurrency: jest.fn((price) => `$${price.toFixed(2)}`)
+}));
+
+describe('Add to Cart Integration', () => {
+  const mockAddToCart = jest.fn();
+  const mockUpdateCartItem = jest.fn();
+  const mockRemoveFromCart = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockNavigate.mockClear();
+  });
+
+  test('user can add book to cart from catalog', async () => {
+    const user = userEvent.setup();
+    
+    // Mock useContext for Catalog component
+    useContext.mockReturnValue({
+      books: [
+        {
+          id: 1,
+          title: 'Integration Test Book',
+          author: 'Test Author',
+          price: 25.99,
+          image: 'test.jpg',
+          description: 'Test description'
+        }
+      ],
+      cart: [],
+      cartCount: 0,
+      addToCart: mockAddToCart,
+      updateCartItem: mockUpdateCartItem,
+      removeFromCart: mockRemoveFromCart
+    });
+
+    render(
+      <BrowserRouter>
+        <Catalog />
+      </BrowserRouter>
+    );
+
+    // Find and click "Buy Now" button
+    const buyButton = screen.getByText('Buy Now');
+    await user.click(buyButton);
+
+    // Verify addToCart was called with correct book
+    expect(mockAddToCart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Integration Test Book',
+        price: 25.99
+      }),
+      1
+    );
+  });
+
+  test('cart updates when items are added', async () => {
+    const user = userEvent.setup();
+    
+    // Mock useContext for Cart component with items
+    useContext.mockReturnValue({
+      cart: [
+        {
+          id: 1,
+          title: 'Integration Test Book',
+          author: 'Test Author',
+          price: 25.99,
+          quantity: 1
+        }
+      ],
+      cartCount: 1,
+      updateCartItem: mockUpdateCartItem,
+      removeFromCart: mockRemoveFromCart
+    });
+
+    render(
+      <BrowserRouter>
+        <Cart />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText('Integration Test Book')).toBeInTheDocument();
+    expect(screen.getByText('$25.99')).toBeInTheDocument();
+  });
+});

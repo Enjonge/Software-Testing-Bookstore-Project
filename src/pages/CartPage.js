@@ -1,55 +1,140 @@
-import React, { useContext } from 'react';
-import { StoreContext } from '../store/StoreProvider';
+import React from 'react';
+import { useStore } from '../store/StoreProvider';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../config/currency';
 
 const CartPage = () => {
-  const { cart, updateCartQuantity, removeFromCart } = useContext(StoreContext);
+  const { cart, updateCartQuantity, removeFromCart } = useStore();
 
-  const subtotal = cart.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
+  const handleRemove = (bookId) => {
+    if (!bookId) return;
+    removeFromCart(bookId);
+  };
 
-  return (
-    <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Cart</h2>
-      {cart.length === 0 ? (
-        <div className="text-gray-600">Your cart is empty. <Link className="text-primary" to="/catalog">Continue shopping</Link></div>
-      ) : (
-        <div className="space-y-4">
-          {cart.map(({ id, book, quantity }) => (
-            <div key={id} className="flex items-center justify-between bg-white rounded-md p-4 shadow">
-              <div className="flex items-center gap-4">
-                <img src={book.image} alt={`${book.title} by ${book.author}`} className="w-16 h-16 object-cover rounded" />
-                <div>
-                  <div className="font-semibold">{book.title}</div>
-                  <div className="text-sm text-gray-600">by {book.author}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={(e) => updateCartQuantity(id, Math.max(1, Number(e.target.value) || 1))}
-                  className="w-20 border rounded px-2 py-1"
-                />
-                <div className="w-24 text-right font-semibold">{formatCurrency(book.price * quantity)}</div>
-                <button onClick={() => removeFromCart(id)} className="text-red-600 hover:underline">Remove</button>
-              </div>
-            </div>
-          ))}
-          <div className="flex items-center justify-between border-t pt-4 mt-4">
-            <div className="text-xl font-bold">Subtotal</div>
-            <div className="text-xl font-bold">{formatCurrency(subtotal)}</div>
-          </div>
-          <div className="text-right">
-            <Link to="/checkout" className="inline-block bg-primary text-white px-6 py-3 rounded-lg">Proceed to Checkout</Link>
+  const handleDecrease = (bookId, currentQuantity) => {
+    if (!bookId) return;
+    
+    if (currentQuantity > 1) {
+      updateCartQuantity(bookId, currentQuantity - 1);
+    } else {
+      handleRemove(bookId);
+    }
+  };
+
+  const handleIncrease = (bookId, currentQuantity) => {
+    if (!bookId) return;
+    updateCartQuantity(bookId, currentQuantity + 1);
+  };
+
+  // Calculate cart total
+  const cartTotal = cart.reduce((total, item) => total + (item.book?.price || 0) * item.quantity, 0);
+
+  // Empty cart state
+  if (!cart || cart.length === 0) {
+    return (
+      <div className="p-4">
+        <h2 className="text-2xl font-bold mb-4">Your Cart</h2>
+        <div className="text-center py-8">
+          <p className="text-gray-600 mb-4">Your cart is empty</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link 
+              to="/catalog" 
+              className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark font-semibold"
+            >
+              Browse Catalog
+            </Link>
+            <Link 
+              to="/" 
+              className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 font-semibold"
+            >
+              Go to Home
+            </Link>
           </div>
         </div>
-      )}
-    </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Your Cart</h2>
+      <div className="space-y-4">
+        {cart.map((item) => {
+          if (!item || !item.book) return null;
+          
+          const bookId = item.book.id;
+          const itemTotal = (item.book.price || 0) * item.quantity;
+          
+          return (
+            <div key={bookId} className="flex justify-between items-center border p-4 rounded">
+              <div className="flex-1">
+                <h3 className="font-bold text-lg">{item.book.title}</h3>
+                <p className="text-gray-600">by {item.book.author}</p>
+                <p className="mt-2">Quantity: {item.quantity}</p>
+                <p className="text-green-600 font-semibold">
+                  {formatCurrency(itemTotal)}
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleDecrease(bookId, item.quantity)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 w-8 h-8 rounded flex items-center justify-center font-bold"
+                  >
+                    -
+                  </button>
+                  <span className="px-3 py-1 border bg-white min-w-12 text-center">
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => handleIncrease(bookId, item.quantity)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 w-8 h-8 rounded flex items-center justify-center font-bold"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  onClick={() => handleRemove(bookId)}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-semibold"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        
+        <div className="border-t pt-4 mt-6">
+          <div className="flex justify-between items-center font-bold text-xl mb-4">
+            <span>Total:</span>
+            <span className="text-green-600">
+              {formatCurrency(cartTotal)}
+            </span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Link 
+              to="/catalog" 
+              className="bg-primary text-white px-6 py-2 rounded hover:bg-primary-dark font-semibold text-center"
+            >
+              Continue Shopping
+            </Link>
+            <Link 
+              to="/" 
+              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 font-semibold text-center"
+            >
+              Go to Home
+            </Link>
+            <Link 
+              to="/checkout" 
+              className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 font-semibold text-center"
+            >
+              Proceed to Checkout
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
 export default CartPage;
-
-

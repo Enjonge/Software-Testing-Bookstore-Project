@@ -1,0 +1,116 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import Cart from '../components/Cart';
+import Checkout from '../components/Checkout';
+
+// Mock StoreContext properly
+jest.mock('../store/StoreProvider', () => ({
+  StoreContext: React.createContext()
+}));
+
+// Mock useContext to return our test data
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  useContext: jest.fn()
+}));
+
+const { useContext } = require('react');
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+  Link: ({ children, to, ...props }) => (
+    <a href={to} {...props}>{children}</a>
+  )
+}));
+
+// Mock currency
+jest.mock('../config/currency', () => ({
+  formatCurrency: jest.fn((price) => `$${price.toFixed(2)}`)
+}));
+
+// Mock CheckoutService
+jest.mock('../services/CheckoutService', () => ({
+  startPayment: jest.fn()
+}));
+
+describe('Checkout Flow Integration', () => {
+  const mockClearCart = jest.fn();
+  const mockUpdateCartItem = jest.fn();
+  const mockRemoveFromCart = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockNavigate.mockClear();
+  });
+
+  test('user can proceed from cart to checkout', async () => {
+    const user = userEvent.setup();
+    
+    // Mock useContext for Cart component
+    useContext.mockReturnValue({
+      cart: [
+        {
+          id: 1,
+          title: 'Checkout Flow Book',
+          author: 'Test Author',
+          price: 35.99,
+          quantity: 1
+        }
+      ],
+      cartCount: 1,
+      updateCartItem: mockUpdateCartItem,
+      removeFromCart: mockRemoveFromCart,
+      clearCart: mockClearCart
+    });
+
+    render(
+      <BrowserRouter>
+        <Cart />
+      </BrowserRouter>
+    );
+
+    // Click "Proceed to Checkout"
+    const checkoutButton = screen.getByText('Proceed to Checkout');
+    await user.click(checkoutButton);
+
+    // Should navigate to checkout page
+    expect(mockNavigate).toHaveBeenCalledWith('/checkout');
+  });
+
+  test('checkout form validates required fields', async () => {
+    const user = userEvent.setup();
+    
+    // Mock useContext for Checkout component
+    useContext.mockReturnValue({
+      cart: [
+        {
+          id: 1,
+          title: 'Checkout Flow Book',
+          author: 'Test Author',
+          price: 35.99,
+          quantity: 1
+        }
+      ],
+      cartCount: 1,
+      clearCart: mockClearCart
+    });
+
+    render(
+      <BrowserRouter>
+        <Checkout />
+      </BrowserRouter>
+    );
+
+    // Try to proceed without filling required fields
+    const continueButton = screen.getByText('Continue to Payment');
+    await user.click(continueButton);
+
+    // Should still be on customer information step (validation should prevent progression)
+    expect(screen.getByText('Customer Information')).toBeInTheDocument();
+    expect(screen.getByText('First Name *')).toBeInTheDocument();
+  });
+});
